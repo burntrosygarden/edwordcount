@@ -374,6 +374,7 @@
         // 全局变量
         let uploadedFile = null;
         let uploadedFileName = '';
+        let generatedDocxBlob = null;
 
         // 配置
         const SECTION_PATTERNS = [
@@ -656,6 +657,10 @@
                     const startStr = formatTime(startTime);
                     const endStr = formatTime(endTime);
 
+                    // 构建修改后的标题（包含标注）
+                    const cleanedTitle = removeOldAnnotation(paragraphTexts[sectionIndex]);
+                    const modifiedTitle = `${cleanedTitle}（约${charCount}字，${startStr}-${endStr}）`;
+
                     // 保存信息
                     sectionsInfo.push({
                         index: i,
@@ -663,7 +668,8 @@
                         paraIndex: sectionIndex,
                         charCount: charCount,
                         duration: duration,
-                        timeRange: `${startStr}-${endStr}`
+                        timeRange: `${startStr}-${endStr}`,
+                        modifiedTitle: modifiedTitle
                     });
 
                     // 删除段落中的旧时间标注
@@ -726,8 +732,8 @@
                 // 生成新的docx文件
                 const newDocx = await zip.generateAsync({type: 'blob'});
 
-                // 下载文件
-                saveAs(newDocx, `${uploadedFileName}_带标注.docx`);
+                // 存储生成的文档blob（不自动下载）
+                generatedDocxBlob = newDocx;
 
             } catch (err) {
                 console.error(err);
@@ -751,6 +757,10 @@
                             字数：<strong>${info.charCount}</strong> 字 |
                             时长：<strong>${info.duration}</strong> 秒 |
                             时间轴：<strong>${info.timeRange}</strong>
+                        </div>
+                        <div style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 4px; font-size: 14px;">
+                            <div style="color: #666; margin-bottom: 5px;">修改后的标题（可复制）：</div>
+                            <div style="color: #333; user-select: all; cursor: text;">${info.modifiedTitle}</div>
                         </div>
                     </div>
                 `;
@@ -778,8 +788,37 @@
                 </div>
             `;
 
+            // 添加下载按钮
+            html += `
+                <div style="text-align: center; margin-top: 30px;">
+                    <button onclick="downloadGeneratedFile()" style="
+                        padding: 12px 40px;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 25px;
+                        font-size: 16px;
+                        cursor: pointer;
+                        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)'"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.3)'">
+                        📥 下载带标注的文档
+                    </button>
+                </div>
+            `;
+
             resultContent.innerHTML = html;
             resultArea.classList.add('show');
+        }
+
+        // 下载生成的文件
+        function downloadGeneratedFile() {
+            if (generatedDocxBlob) {
+                saveAs(generatedDocxBlob, `${uploadedFileName}_带标注.docx`);
+            } else {
+                showError('文档未生成，请先处理文件');
+            }
         }
 
         // 显示错误
