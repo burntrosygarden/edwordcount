@@ -511,8 +511,12 @@
 
         // 统计字符数（Word标准：中文字符数 + 英文单词数 + 数字）
         function countCharacters(text) {
-            // 统计中文字符
-            const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+            // 统计中文字符（包括汉字和中文标点）
+            // Unicode范围：
+            // \u4e00-\u9fff: CJK统一汉字
+            // \u3000-\u303f: CJK符号和标点
+            // \uff00-\uffef: 全角ASCII、全角标点
+            const chineseChars = (text.match(/[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/g) || []).length;
 
             // 统计英文单词数（包括缩写词如Let's, don't等）
             const englishWords = (text.match(/[a-zA-Z]+(?:'[a-zA-Z]+)?/g) || []).length;
