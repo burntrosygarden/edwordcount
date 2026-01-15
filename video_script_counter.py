@@ -92,6 +92,59 @@ class VideoScriptCounter:
 
         return result
 
+    def remove_old_annotation(self, text):
+        """
+        删除标题中已有的时间标注
+
+        匹配格式示例：
+        - (00:45 - 06:30)
+        - （00:45-06:30）
+        - (约150字，00:45-06:30)
+        - （约150字，00:45 - 06:30）
+
+        Args:
+            text: 输入文本
+
+        Returns:
+            删除标注后的文本
+        """
+        # 匹配各种时间标注格式
+        patterns = [
+            r'[（(]\s*约?\s*\d+\s*字\s*[,，]\s*\d{1,2}:\d{2}\s*[-\-~～]\s*\d{1,2}:\d{2}\s*[）)]',  # (约150字，00:45-06:30)
+            r'[（(]\s*\d{1,2}:\d{2}\s*[-\-~～]\s*\d{1,2}:\d{2}\s*[）)]',  # (00:45-06:30)
+        ]
+
+        result = text
+        for pattern in patterns:
+            result = re.sub(pattern, '', result)
+
+        return result.strip()
+
+    def is_subtitle(self, text):
+        """
+        判断是否是子标题（如"知识点1"、"知识点2"等）
+
+        Args:
+            text: 段落文本
+
+        Returns:
+            是否是子标题
+        """
+        # 匹配"知识点1"、"知识点2"、"练习题1"等格式
+        subtitle_patterns = [
+            r'^知识点\s*\d+',
+            r'^练习题?\s*\d+',
+            r'^例题\s*\d+',
+            r'^第[一二三四五六七八九十\d]+题',
+            r'^题目\s*\d+',
+        ]
+
+        text = text.strip()
+        for pattern in subtitle_patterns:
+            if re.match(pattern, text):
+                return True
+        return False
+
     def count_characters(self, text):
         """
         统计字符数（包含中文、英文、数字、标点符号）
@@ -142,7 +195,7 @@ class VideoScriptCounter:
 
     def extract_section_text(self, doc, section_index):
         """
-        提取指定部分的文本内容
+        提取指定部分的文本内容（排除标题行）
 
         Args:
             doc: Document对象
@@ -165,15 +218,20 @@ class VideoScriptCounter:
             if re.search(section_pattern, para_text):
                 section_para_index = i
                 in_section = True
-                continue
+                continue  # 跳过主标题行，不计入字数
 
             # 检查是否到达下一部分
             if in_section and next_section_pattern:
                 if re.search(next_section_pattern, para_text):
                     break
 
-            # 如果已经到达最后一部分且没有下一部分，读取到文档末尾
+            # 如果在当前部分内
             if in_section:
+                # 跳过子标题行（如"知识点1"），不计入字数
+                if self.is_subtitle(para_text):
+                    continue
+
+                # 添加正文内容
                 section_text += para_text + "\n"
 
         return section_para_index, section_text
@@ -239,11 +297,14 @@ class VideoScriptCounter:
         for info in sections_info:
             para = doc.paragraphs[info['para_index']]
 
-            # 构建标注文本
+            # 删除旧的时间标注
+            clean_text = self.remove_old_annotation(para.text)
+
+            # 构建新的标注文本
             annotation = f"（约{info['char_count']}字，{info['time_range']}）"
 
-            # 在段落末尾添加标注
-            para.text = para.text + annotation
+            # 添加新标注
+            para.text = clean_text + annotation
 
         # 保存文档
         doc.save(str(self.output_file))
