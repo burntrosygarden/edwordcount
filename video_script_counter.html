@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频脚本字数统计与时间预估工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f1ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8e9ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .upload-hint {
+            font-size: 14px;
+            color: #999;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .config-area {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .config-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .config-title::before {
+            content: "⚙️";
+            margin-right: 8px;
+            font-size: 18px;
+        }
+
+        .config-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .config-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .config-input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 120px;
+            text-align: center;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .result-area {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9ff;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+
+        .result-area.show {
+            display: block;
+            animation: slideIn 0.4s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .result-title::before {
+            content: "📊";
+            margin-right: 8px;
+            font-size: 20px;
+        }
+
+        .result-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .result-value {
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .result-section {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .result-section-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .result-section-info {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .summary-item {
+            display: inline-block;
+            margin: 0 20px;
+            font-size: 16px;
+        }
+
+        .summary-value {
+            font-size: 24px;
+            font-weight: 700;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffe6e6;
+            color: #d32f2f;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            border-left: 4px solid #d32f2f;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .error-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 视频脚本字数统计与时间预估工具</h1>
+        <p class="subtitle">专为儿童教学视频脚本设计 | 220字/分钟语速标准</p>
+
+        <div class="config-area">
+            <div class="config-title">参数配置</div>
+            <div class="config-item">
+                <span class="config-label">语速（字/分钟）</span>
+                <input type="number" id="speechRate" class="config-input" value="220" min="100" max="400">
+            </div>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📄</div>
+            <div class="upload-text">点击或拖拽上传 .docx 文件</div>
+            <div class="upload-hint">支持Word文档（.docx格式）</div>
+            <input type="file" id="fileInput" accept=".docx">
+        </div>
+
+        <button class="button" id="processBtn" disabled>开始处理</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>正在处理中，请稍候...</div>
+        </div>
+
+        <div class="error" id="error">
+            <div class="error-title">❌ 错误</div>
+            <div id="errorMessage"></div>
+        </div>
+
+        <div class="result-area" id="resultArea">
+            <div class="result-title">统计结果</div>
+            <div id="resultContent"></div>
+        </div>
+
+        <div class="footer">
+            视频脚本字数统计工具 v1.0 | 支持括号类型：()（）[]【】「」『』{}｛｝
+        </div>
+    </div>
+
+    <!-- 使用 JSZip 和 docxtemplater 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.6/dist/pizzip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.42.3/build/docxtemplater.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+    <script>
+        // 全局变量
+        let uploadedFile = null;
+        let uploadedFileName = '';
+
+        // 配置
+        const SECTION_PATTERNS = [
+            /第一部分[：:]\s*引入/,
+            /第二部分[：:]\s*知识点讲解/,
+            /第三部分[：:]\s*综合练习/,
+            /第四部分[：:]\s*总结/
+        ];
+
+        const SECTION_NAMES = ['引入', '知识点讲解', '综合练习', '总结'];
+
+        // 所有支持的括号对
+        const BRACKET_PAIRS = [
+            ['(', ')'],
+            ['（', '）'],
+            ['[', ']'],
+            ['【', '】'],
+            ['「', '」'],
+            ['『', '』'],
+            ['{', '}'],
+            ['｛', '｝']
+        ];
+
+        // DOM元素
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const processBtn = document.getElementById('processBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultArea = document.getElementById('resultArea');
+        const resultContent = document.getElementById('resultContent');
+        const speechRateInput = document.getElementById('speechRate');
+
+        // 事件监听
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        processBtn.addEventListener('click', processDocument);
+
+        // 拖拽上传
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // 处理文件选择
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        // 处理文件
+        function handleFile(file) {
+            if (!file.name.endsWith('.docx')) {
+                showError('请上传 .docx 格式的Word文档');
+                return;
+            }
+
+            uploadedFile = file;
+            uploadedFileName = file.name.replace('.docx', '');
+
+            // 更新UI
+            uploadArea.querySelector('.upload-text').textContent = `已选择：${file.name}`;
+            uploadArea.querySelector('.upload-icon').textContent = '✅';
+            processBtn.disabled = false;
+
+            // 隐藏之前的结果
+            hideError();
+            resultArea.classList.remove('show');
+        }
+
+        // 移除括号内容
+        function removeBrackets(text) {
+            let result = text;
+
+            BRACKET_PAIRS.forEach(([open, close]) => {
+                // 处理嵌套括号
+                let changed = true;
+                while (changed) {
+                    const openEscaped = open.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const closeEscaped = close.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const pattern = new RegExp(`${openEscaped}[^${openEscaped}${closeEscaped}]*?${closeEscaped}`, 'g');
+                    const newResult = result.replace(pattern, '');
+                    changed = (newResult !== result);
+                    result = newResult;
+                }
+            });
+
+            return result;
+        }
+
+        // 统计字符数（去除空白后）
+        function countCharacters(text) {
+            return text.replace(/\s+/g, '').length;
+        }
+
+        // 计算时长（秒）
+        function calculateDuration(charCount, speechRate) {
+            const duration = (charCount / speechRate) * 60;
+            return Math.round(duration);
+        }
+
+        // 格式化时间
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+
+            if (hours > 0) {
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            } else {
+                return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }
+        }
+
+        // 处理文档
+        async function processDocument() {
+            if (!uploadedFile) return;
+
+            hideError();
+            loading.classList.add('show');
+            processBtn.disabled = true;
+            resultArea.classList.remove('show');
+
+            try {
+                const speechRate = parseInt(speechRateInput.value) || 220;
+
+                // 读取文件
+                const arrayBuffer = await uploadedFile.arrayBuffer();
+                const zip = await JSZip.loadAsync(arrayBuffer);
+
+                // 读取document.xml
+                const docXml = await zip.file('word/document.xml').async('text');
+
+                // 解析文档内容
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(docXml, 'text/xml');
+                const paragraphs = xmlDoc.getElementsByTagName('w:p');
+
+                // 提取所有段落文本
+                const paragraphTexts = [];
+                const paragraphElements = [];
+
+                for (let i = 0; i < paragraphs.length; i++) {
+                    const para = paragraphs[i];
+                    const texts = para.getElementsByTagName('w:t');
+                    let paraText = '';
+                    for (let j = 0; j < texts.length; j++) {
+                        paraText += texts[j].textContent;
+                    }
+                    paragraphTexts.push(paraText);
+                    paragraphElements.push(para);
+                }
+
+                // 处理四个部分
+                const sectionsInfo = [];
+                let cumulativeTime = 0;
+
+                for (let i = 0; i < 4; i++) {
+                    const pattern = SECTION_PATTERNS[i];
+                    const sectionName = SECTION_NAMES[i];
+
+                    // 查找部分起始位置
+                    let sectionIndex = -1;
+                    let nextSectionIndex = paragraphTexts.length;
+
+                    for (let j = 0; j < paragraphTexts.length; j++) {
+                        if (pattern.test(paragraphTexts[j])) {
+                            sectionIndex = j;
+                            break;
+                        }
+                    }
+
+                    if (sectionIndex === -1) {
+                        console.warn(`未找到：${sectionName}`);
+                        continue;
+                    }
+
+                    // 查找下一部分的位置
+                    if (i < 3) {
+                        const nextPattern = SECTION_PATTERNS[i + 1];
+                        for (let j = sectionIndex + 1; j < paragraphTexts.length; j++) {
+                            if (nextPattern.test(paragraphTexts[j])) {
+                                nextSectionIndex = j;
+                                break;
+                            }
+                        }
+                    }
+
+                    // 提取该部分的文本
+                    let sectionText = '';
+                    for (let j = sectionIndex + 1; j < nextSectionIndex; j++) {
+                        sectionText += paragraphTexts[j] + '\n';
+                    }
+
+                    // 移除括号内容
+                    const textWithoutBrackets = removeBrackets(sectionText);
+
+                    // 统计字数
+                    const charCount = countCharacters(textWithoutBrackets);
+
+                    // 计算时长
+                    const duration = calculateDuration(charCount, speechRate);
+
+                    // 计算时间范围
+                    const startTime = cumulativeTime;
+                    const endTime = cumulativeTime + duration;
+                    cumulativeTime = endTime;
+
+                    const startStr = formatTime(startTime);
+                    const endStr = formatTime(endTime);
+
+                    // 保存信息
+                    sectionsInfo.push({
+                        index: i,
+                        name: sectionName,
+                        paraIndex: sectionIndex,
+                        charCount: charCount,
+                        duration: duration,
+                        timeRange: `${startStr}-${endStr}`
+                    });
+
+                    // 在段落末尾添加标注
+                    const annotation = `（约${charCount}字，${startStr}-${endStr}）`;
+                    const para = paragraphElements[sectionIndex];
+                    const runs = para.getElementsByTagName('w:r');
+
+                    if (runs.length > 0) {
+                        // 在最后一个run后添加新的文本
+                        const lastRun = runs[runs.length - 1];
+                        const newRun = lastRun.cloneNode(true);
+                        const textNode = newRun.getElementsByTagName('w:t')[0];
+                        if (textNode) {
+                            textNode.textContent = annotation;
+                            para.appendChild(newRun);
+                        }
+                    } else {
+                        // 如果没有run，创建一个新的
+                        const newRun = xmlDoc.createElement('w:r');
+                        const newText = xmlDoc.createElement('w:t');
+                        newText.textContent = annotation;
+                        newRun.appendChild(newText);
+                        para.appendChild(newRun);
+                    }
+                }
+
+                // 显示结果
+                displayResults(sectionsInfo, speechRate);
+
+                // 生成新文档
+                const serializer = new XMLSerializer();
+                const newDocXml = serializer.serializeToString(xmlDoc);
+                zip.file('word/document.xml', newDocXml);
+
+                // 生成新的docx文件
+                const newDocx = await zip.generateAsync({type: 'blob'});
+
+                // 下载文件
+                saveAs(newDocx, `${uploadedFileName}_带标注.docx`);
+
+            } catch (err) {
+                console.error(err);
+                showError(`处理失败：${err.message}`);
+            } finally {
+                loading.classList.remove('show');
+                processBtn.disabled = false;
+            }
+        }
+
+        // 显示结果
+        function displayResults(sectionsInfo, speechRate) {
+            let html = '';
+
+            // 各部分统计
+            sectionsInfo.forEach(info => {
+                html += `
+                    <div class="result-section">
+                        <div class="result-section-title">第${info.index + 1}部分：${info.name}</div>
+                        <div class="result-section-info">
+                            字数：<strong>${info.charCount}</strong> 字 |
+                            时长：<strong>${info.duration}</strong> 秒 |
+                            时间轴：<strong>${info.timeRange}</strong>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 总结
+            const totalChars = sectionsInfo.reduce((sum, info) => sum + info.charCount, 0);
+            const totalDuration = sectionsInfo.reduce((sum, info) => sum + info.duration, 0);
+
+            html += `
+                <div class="summary">
+                    <div class="summary-item">
+                        <div>总字数</div>
+                        <div class="summary-value">${totalChars}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div>总时长</div>
+                        <div class="summary-value">${formatTime(totalDuration)}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div>语速标准</div>
+                        <div class="summary-value">${speechRate}</div>
+                        <div style="font-size: 12px; margin-top: 5px;">字/分钟</div>
+                    </div>
+                </div>
+            `;
+
+            resultContent.innerHTML = html;
+            resultArea.classList.add('show');
+        }
+
+        // 显示错误
+        function showError(message) {
+            errorMessage.textContent = message;
+            error.classList.add('show');
+        }
+
+        // 隐藏错误
+        function hideError() {
+            error.classList.remove('show');
+        }
+    </script>
+</body>
+</html>
