@@ -43,8 +43,12 @@ def remove_brackets(text):
 # 新的字数统计方法（Word标准）
 def count_characters_word_style(text):
     """Word标准：中文字符数 + 英文单词数 + 数字"""
-    # 统计中文字符
-    chinese_chars = len(re.findall(r'[\u4e00-\u9fff]', text))
+    # 统计中文字符（包括汉字和中文标点）
+    # Unicode范围：
+    # \u4e00-\u9fff: CJK统一汉字
+    # \u3000-\u303f: CJK符号和标点
+    # \uff00-\uffef: 全角ASCII、全角标点
+    chinese_chars = len(re.findall(r'[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]', text))
 
     # 统计英文单词数（包括缩写词）
     english_words = len(re.findall(r"[a-zA-Z]+(?:'[a-zA-Z]+)?", text))

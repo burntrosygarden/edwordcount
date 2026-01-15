@@ -155,8 +155,12 @@ class VideoScriptCounter:
         Returns:
             字符数
         """
-        # 统计中文字符（包括中文标点）
-        chinese_chars = len(re.findall(r'[\u4e00-\u9fff]', text))
+        # 统计中文字符（包括汉字和中文标点）
+        # Unicode范围：
+        # \u4e00-\u9fff: CJK统一汉字
+        # \u3000-\u303f: CJK符号和标点
+        # \uff00-\uffef: 全角ASCII、全角标点
+        chinese_chars = len(re.findall(r'[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]', text))
 
         # 统计英文单词数（包括缩写词如Let's, don't等）
         # 匹配：字母 + 可选的撇号和字母
