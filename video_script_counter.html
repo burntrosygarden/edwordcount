@@ -459,6 +459,36 @@
             resultArea.classList.remove('show');
         }
 
+        // 删除标题中的旧时间标注
+        function removeOldAnnotation(text) {
+            // 匹配各种时间标注格式
+            const patterns = [
+                /[（(]\s*约?\s*\d+\s*字\s*[,，]\s*\d{1,2}:\d{2}\s*[-\-~～]\s*\d{1,2}:\d{2}\s*[）)]/g,  // (约150字，00:45-06:30)
+                /[（(]\s*\d{1,2}:\d{2}\s*[-\-~～]\s*\d{1,2}:\d{2}\s*[）)]/g,  // (00:45-06:30)
+            ];
+
+            let result = text;
+            patterns.forEach(pattern => {
+                result = result.replace(pattern, '');
+            });
+
+            return result.trim();
+        }
+
+        // 判断是否是子标题
+        function isSubtitle(text) {
+            const subtitlePatterns = [
+                /^知识点\s*\d+/,
+                /^练习题?\s*\d+/,
+                /^例题\s*\d+/,
+                /^第[一二三四五六七八九十\d]+题/,
+                /^题目\s*\d+/,
+            ];
+
+            text = text.trim();
+            return subtitlePatterns.some(pattern => pattern.test(text));
+        }
+
         // 移除括号内容
         function removeBrackets(text) {
             let result = text;
@@ -577,10 +607,19 @@
                         }
                     }
 
-                    // 提取该部分的文本
+                    // 提取该部分的文本（排除标题行和子标题行）
                     let sectionText = '';
                     for (let j = sectionIndex + 1; j < nextSectionIndex; j++) {
-                        sectionText += paragraphTexts[j] + '\n';
+                        const paraText = paragraphTexts[j].trim();
+
+                        // 跳过空行
+                        if (!paraText) continue;
+
+                        // 跳过子标题行（如"知识点1"）
+                        if (isSubtitle(paraText)) continue;
+
+                        // 添加正文内容
+                        sectionText += paraText + '\n';
                     }
 
                     // 移除括号内容
@@ -610,14 +649,39 @@
                         timeRange: `${startStr}-${endStr}`
                     });
 
-                    // 在段落末尾添加标注
-                    const annotation = `（约${charCount}字，${startStr}-${endStr}）`;
+                    // 删除段落中的旧时间标注
                     const para = paragraphElements[sectionIndex];
                     const runs = para.getElementsByTagName('w:r');
 
-                    if (runs.length > 0) {
+                    // 遍历所有run，删除包含旧标注的text节点
+                    for (let k = runs.length - 1; k >= 0; k--) {
+                        const run = runs[k];
+                        const textNodes = run.getElementsByTagName('w:t');
+                        for (let m = textNodes.length - 1; m >= 0; m--) {
+                            const textNode = textNodes[m];
+                            const originalText = textNode.textContent;
+                            const cleanedText = removeOldAnnotation(originalText);
+
+                            // 如果文本被改变（说明删除了标注），更新或删除节点
+                            if (cleanedText !== originalText) {
+                                if (cleanedText.trim()) {
+                                    textNode.textContent = cleanedText;
+                                } else {
+                                    // 如果清理后为空，删除整个run
+                                    run.parentNode.removeChild(run);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // 添加新的标注
+                    const annotation = `（约${charCount}字，${startStr}-${endStr}）`;
+                    const remainingRuns = para.getElementsByTagName('w:r');
+
+                    if (remainingRuns.length > 0) {
                         // 在最后一个run后添加新的文本
-                        const lastRun = runs[runs.length - 1];
+                        const lastRun = remainingRuns[remainingRuns.length - 1];
                         const newRun = lastRun.cloneNode(true);
                         const textNode = newRun.getElementsByTagName('w:t')[0];
                         if (textNode) {
