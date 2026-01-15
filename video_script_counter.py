@@ -147,7 +147,7 @@ class VideoScriptCounter:
 
     def count_characters(self, text):
         """
-        统计字符数（包含中文、英文、数字、标点符号）
+        统计字符数（Word标准：中文字符数 + 英文单词数 + 数字）
 
         Args:
             text: 输入文本
@@ -155,10 +155,22 @@ class VideoScriptCounter:
         Returns:
             字符数
         """
-        # 移除空白字符后统计
-        text = text.strip()
-        # 统计所有非空白字符
-        return len(re.sub(r'\s+', '', text))
+        # 统计中文字符（包括汉字和中文标点）
+        # Unicode范围：
+        # \u4e00-\u9fff: CJK统一汉字
+        # \u3000-\u303f: CJK符号和标点
+        # \uff00-\uffef: 全角ASCII、全角标点
+        chinese_chars = len(re.findall(r'[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]', text))
+
+        # 统计英文单词数（包括缩写词如Let's, don't等）
+        # 匹配：字母 + 可选的撇号和字母
+        english_words = len(re.findall(r"[a-zA-Z]+(?:'[a-zA-Z]+)?", text))
+
+        # 统计数字
+        digits = len(re.findall(r'\d', text))
+
+        # 总字数 = 中文字符 + 英文单词 + 数字
+        return chinese_chars + english_words + digits
 
     def format_time(self, seconds):
         """
