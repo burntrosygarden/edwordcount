@@ -39,12 +39,34 @@ class VideoScriptCounter:
         ('｛', '｝'),
     ]
 
-    # 四个固定部分的识别模式
+    # 四个固定部分的识别模式 - 每个部分可以有多个备选模式
     SECTION_PATTERNS = [
-        r'第一部分[：:]\s*引入',
-        r'第二部分[：:]\s*知识点讲解',
-        r'第三部分[：:]\s*综合练习',
-        r'第四部分[：:]\s*总结',
+        # 第一部分：引入
+        [
+            r'第一部分[：:]\s*引入',
+            r'^引入$',
+            r'课程引入',
+        ],
+        # 第二部分：知识点讲解
+        [
+            r'第二部分[：:]\s*知识点讲解',
+            r'^知识点讲解$',
+            r'知识点',
+        ],
+        # 第三部分：综合练习
+        [
+            r'第三部分[：:]\s*综合练习',
+            r'^综合练习$',
+            r'练习',
+        ],
+        # 第四部分：总结
+        [
+            r'第四部分[：:]\s*总结',
+            r'^总结$',
+            r'课程总结',
+            r'总结与结语',
+            r'结语',
+        ],
     ]
 
     def __init__(self, input_file):
@@ -145,7 +167,7 @@ class VideoScriptCounter:
             r'^练习题?\s*\d+',
             r'^例题\s*\d+',
             r'^第[一二三四五六七八九十\d]+题',
-            r'^题目\s*\d+',
+            # 移除了 r'^题目\s*\d+' - "题目1"、"题目2"等应该被统计，不是子标题
         ]
 
         text = text.strip()
@@ -225,8 +247,8 @@ class VideoScriptCounter:
         Returns:
             (section_para_index, section_text): 部分起始段落索引和文本内容
         """
-        section_pattern = self.SECTION_PATTERNS[section_index]
-        next_section_pattern = self.SECTION_PATTERNS[section_index + 1] if section_index < 3 else None
+        section_patterns = self.SECTION_PATTERNS[section_index]  # 现在是列表
+        next_section_patterns = self.SECTION_PATTERNS[section_index + 1] if section_index < 3 else None
 
         section_text = ""
         section_para_index = None
@@ -234,16 +256,18 @@ class VideoScriptCounter:
 
         for i, para in enumerate(doc.paragraphs):
             para_text = para.text.strip()
+            # 删除旧标注后再匹配
+            cleaned_text = self.remove_old_annotation(para_text)
 
-            # 检查是否是当前部分的开始
-            if re.search(section_pattern, para_text):
+            # 检查是否是当前部分的开始 - 尝试所有备选模式
+            if any(re.search(pattern, cleaned_text) for pattern in section_patterns):
                 section_para_index = i
                 in_section = True
                 continue  # 跳过主标题行，不计入字数
 
-            # 检查是否到达下一部分
-            if in_section and next_section_pattern:
-                if re.search(next_section_pattern, para_text):
+            # 检查是否到达下一部分 - 尝试所有备选模式
+            if in_section and next_section_patterns:
+                if any(re.search(pattern, cleaned_text) for pattern in next_section_patterns):
                     break
 
             # 如果在当前部分内

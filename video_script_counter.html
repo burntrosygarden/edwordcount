@@ -376,12 +376,34 @@
         let uploadedFileName = '';
         let generatedDocxBlob = null;
 
-        // 配置
+        // 配置 - 每个部分可以有多个备选的匹配模式
         const SECTION_PATTERNS = [
-            /第一部分[：:]\s*引入/,
-            /第二部分[：:]\s*知识点讲解/,
-            /第三部分[：:]\s*综合练习/,
-            /第四部分[：:]\s*总结/
+            // 第一部分：引入
+            [
+                /第一部分[：:]\s*引入/,
+                /^引入$/,
+                /课程引入/
+            ],
+            // 第二部分：知识点讲解
+            [
+                /第二部分[：:]\s*知识点讲解/,
+                /^知识点讲解$/,
+                /知识点/
+            ],
+            // 第三部分：综合练习
+            [
+                /第三部分[：:]\s*综合练习/,
+                /^综合练习$/,
+                /练习/
+            ],
+            // 第四部分：总结
+            [
+                /第四部分[：:]\s*总结/,
+                /^总结$/,
+                /课程总结/,
+                /总结与结语/,
+                /结语/
+            ]
         ];
 
         const SECTION_NAMES = ['引入', '知识点讲解', '综合练习', '总结'];
@@ -486,7 +508,7 @@
                 /^练习题?\s*\d+/,
                 /^例题\s*\d+/,
                 /^第[一二三四五六七八九十\d]+题/,
-                /^题目\s*\d+/,
+                // 移除了 /^题目\s*\d+/ - "题目1"、"题目2"等应该被统计，不是子标题
             ];
 
             text = text.trim();
@@ -595,15 +617,17 @@
                 let cumulativeTime = 0;
 
                 for (let i = 0; i < 4; i++) {
-                    const pattern = SECTION_PATTERNS[i];
+                    const patterns = SECTION_PATTERNS[i];  // 现在是数组
                     const sectionName = SECTION_NAMES[i];
 
-                    // 查找部分起始位置
+                    // 查找部分起始位置 - 尝试所有备选模式
                     let sectionIndex = -1;
                     let nextSectionIndex = paragraphTexts.length;
 
                     for (let j = 0; j < paragraphTexts.length; j++) {
-                        if (pattern.test(paragraphTexts[j])) {
+                        // 尝试该部分的所有备选模式
+                        const cleanedText = removeOldAnnotation(paragraphTexts[j]);
+                        if (patterns.some(pattern => pattern.test(cleanedText))) {
                             sectionIndex = j;
                             break;
                         }
@@ -614,11 +638,12 @@
                         continue;
                     }
 
-                    // 查找下一部分的位置
+                    // 查找下一部分的位置 - 尝试所有备选模式
                     if (i < 3) {
-                        const nextPattern = SECTION_PATTERNS[i + 1];
+                        const nextPatterns = SECTION_PATTERNS[i + 1];
                         for (let j = sectionIndex + 1; j < paragraphTexts.length; j++) {
-                            if (nextPattern.test(paragraphTexts[j])) {
+                            const cleanedText = removeOldAnnotation(paragraphTexts[j]);
+                            if (nextPatterns.some(pattern => pattern.test(cleanedText))) {
                                 nextSectionIndex = j;
                                 break;
                             }
