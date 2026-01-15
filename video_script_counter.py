@@ -167,7 +167,7 @@ class VideoScriptCounter:
             r'^练习题?\s*\d+',
             r'^例题\s*\d+',
             r'^第[一二三四五六七八九十\d]+题',
-            r'^题目\s*\d+',
+            # 移除了 r'^题目\s*\d+' - "题目1"、"题目2"等应该被统计，不是子标题
         ]
 
         text = text.strip()
